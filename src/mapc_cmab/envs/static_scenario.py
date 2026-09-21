@@ -83,9 +83,14 @@ class StaticScenario(Scenario):
     def __call__(
             self,
             key: PRNGKey,
-            link_ap_sta: dict    
+            link_ap_sta: dict,
+            return_per_sta: bool = False    
         ) -> tuple[Scalar, Scalar, Optional[Internals]]:
-        data_rate_fn = jax.jit(self.data_rate_fn)
+        data_rate_fn = self.data_rate_fn
+        if return_per_sta:
+            thr,band_rates, tx_matrices = data_rate_fn(key=key, link_ap_sta=link_ap_sta, return_per_sta=True)
+            reward = thr/100
+            return thr, reward, band_rates, tx_matrices
         thr = data_rate_fn(key=key, link_ap_sta=link_ap_sta)
         reward = thr/100
         return thr, reward

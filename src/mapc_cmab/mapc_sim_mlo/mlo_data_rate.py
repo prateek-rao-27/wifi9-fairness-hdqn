@@ -5,7 +5,7 @@ from .extension_functions import tx_power_indices_to_tx_power
 from .constants import MIN_TX_POWER, MAX_TX_POWER, CHANNEL_WIDTH_2G, CHANNEL_WIDTH_5G, CHANNEL_WIDTH_6G, DEFAULT_SIGMA, DEFAULT_TX_POWER
 import jax.numpy as jnp
 from functools import partial 
-
+@partial(jax.jit, static_argnames=("return_per_sta","n_tx_power_levels"))
 def network_data_rate_mlo(
         key: jax.random.PRNGKey,
         pos: jax.Array,
@@ -17,7 +17,8 @@ def network_data_rate_mlo(
         # key: jax.random.PRNGKey, 
         # pos, 
         # walls, 
-        n_tx_power_levels = 4, 
+        n_tx_power_levels = 4,
+        return_per_sta: bool = False, 
     ):
 
     """
@@ -75,8 +76,30 @@ def network_data_rate_mlo(
     # tx_power_array_5g = jnp.ones(shape=(n_nodes, ), dtype=jnp.float32) * DEFAULT_TX_POWER
     # tx_power_array_6g = jnp.ones(shape=(n_nodes, ), dtype=jnp.float32) * DEFAULT_TX_POWER
 
-    data_rate_2g = net_data_rate_mlo_1(key_2g, tx=tx_matrices[0], tx_power=tx_power_array_2g, channel_width=CHANNEL_WIDTH_2G, path_loss_fn=path_loss_2g)
-    data_rate_5g = net_data_rate_mlo_1(key_5g, tx=tx_matrices[1], tx_power=tx_power_array_5g, channel_width=CHANNEL_WIDTH_5G, path_loss_fn=path_loss_5g)
-    data_rate_6g = net_data_rate_mlo_1(key_6g, tx=tx_matrices[2],  tx_power=tx_power_array_6g, channel_width=CHANNEL_WIDTH_6G, path_loss_fn=path_loss_6g)
+    data_rate_2g = net_data_rate_mlo_1(key_2g, tx=tx_matrices[0], tx_power=tx_power_array_2g, channel_width=CHANNEL_WIDTH_2G, path_loss_fn=path_loss_2g, return_internals = return_per_sta)
+    data_rate_5g = net_data_rate_mlo_1(key_5g, tx=tx_matrices[1], tx_power=tx_power_array_5g, channel_width=CHANNEL_WIDTH_5G, path_loss_fn=path_loss_5g, return_internals = return_per_sta)
+    data_rate_6g = net_data_rate_mlo_1(key_6g, tx=tx_matrices[2], tx_power=tx_power_array_6g, channel_width=CHANNEL_WIDTH_6G, path_loss_fn=path_loss_6g, return_internals = return_per_sta)
     
-    return (data_rate_2g + data_rate_5g + data_rate_6g)
+    if return_per_sta:
+        total_rate = (
+        data_rate_2g[0]
+        + data_rate_5g[0]
+        + data_rate_6g[0]
+        )
+        return(
+            total_rate,(data_rate_2g[1].average_data_rate, data_rate_5g[1].average_data_rate, data_rate_6g[1].average_data_rate,), tx_matrices
+        )
+
+        per_tx_rate = (
+           data_rate_2g[1].average_data_rate
+           + data_rate_5g[1].average_data_rate
+           + data_rate_6g[1].average_data_rate
+        )
+        if return_per_sta:
+          print("TX matrix shape:", tx_matrices.shape)
+          print("TX matrix:")
+          print(tx_matrices)
+
+        return total_rate, per_tx_rate
+
+    return data_rate_2g + data_rate_5g + data_rate_6g

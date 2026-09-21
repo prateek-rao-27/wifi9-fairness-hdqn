@@ -18,7 +18,7 @@ PLOT_PARAMS = {
     'legend.fontsize': 7,
     'lines.linewidth': 1.,
     'lines.markersize': 2,
-    'text.usetex': True,
+    'text.usetex': False,
     'xtick.major.width': 0.5,
     'ytick.major.width': 0.5,
 }
